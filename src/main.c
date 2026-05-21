@@ -9,7 +9,7 @@ int main(void) {
     
     GPIO_Init(LED_BUILTIN, GPIO_OUTPUT);
 
-    //water
+//The Smart Restaurant Terrace
 
     uint32_t last_time = 0;
 
