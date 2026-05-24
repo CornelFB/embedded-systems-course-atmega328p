@@ -1,6 +1,7 @@
 #include "drivers/gpio/gpio.h"
 #include "drivers/timer/timer0.h"
 #include "bsp/nano.h"
+/*
 
 int main(void) {
     
@@ -20,4 +21,15 @@ int main(void) {
             GPIO_Toggle(LED_BUILTIN);
         }
     }
+}
+*/
+#include "terrace.h"
+
+int main(void) {
+    Terrace_Init();
+
+    while (1) {
+        Terrace_Run();
+    }
+    return 0;
 }
