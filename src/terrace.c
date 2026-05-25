@@ -18,9 +18,14 @@
 #define BUZZER_PORT     GPIO_PORTD
 #define BUZZER_PIN      5           // D5
  
+#define LED_PORT        GPIO_PORTB
+#define LED_PIN         0           // D8
+ 
 // ADC channels
 #define ADC_NTC         0           // A0 - temperature sensor
 #define ADC_WATER       1           // A1 - water sensor
+#define ADC_POT         2           // A2 - mode potentiometer
+#define ADC_LDR         3           // A3 - light sensor
  
 // ----------------------------------------------------------------
 // NTC configuration
@@ -37,6 +42,7 @@
 #define TEMP_FAN_START      25
 #define TEMP_FAN_MAX        40
 #define TEMP_ALARM          45
+#define LDR_THRESHOLD       400
  
 // Servo duty cycle
 #define SERVO_OPEN          13
@@ -45,16 +51,17 @@
 // ----------------------------------------------------------------
 // Internal state
 // ----------------------------------------------------------------
-static int16_t  temperature  = 0;
-static uint16_t water_val    = 0;
-static uint8_t  is_raining   = 0;
-static uint8_t  roof_closed  = 0;
-static uint8_t  buzzer_active = 0;
-static uint8_t  buzzer_toggle = 0;
+static terrace_mode_t   current_mode    = MODE_AUTO;
+static int16_t          temperature     = 0;
+static uint16_t         water_val       = 0;
+static uint8_t          is_raining      = 0;
+static uint8_t          roof_closed     = 0;
+static uint8_t          buzzer_active   = 0;
+static uint8_t          buzzer_toggle   = 0;
  
-static uint32_t last_sensors = 0;
-static uint32_t last_lcd     = 0;
-static uint32_t last_buzzer  = 0;
+static uint32_t         last_sensors    = 0;
+static uint32_t         last_lcd        = 0;
+static uint32_t         last_buzzer     = 0;
  
 // ----------------------------------------------------------------
 // Internal functions
@@ -96,16 +103,28 @@ static uint8_t calculate_fan_duty(int16_t temp) {
 }
  
 /**
+ * @brief Reads the current mode from the potentiometer.
+ *
+ * Below 512: AUTO mode. Above 512: MANUAL mode.
+ *
+ * @return terrace_mode_t Current mode.
+ */
+static terrace_mode_t read_mode(void) {
+    return (ADC_Read(ADC_POT) < 512) ? MODE_AUTO : MODE_MANUAL;
+}
+ 
+/**
  * @brief Updates the LCD with the current system status.
  *
- * Row 0: temperature.
+ * Row 0: temperature and mode.
  * Row 1: roof status and rain indicator.
  */
 static void update_lcd(void) {
     LCD_SetCursor(0, 0);
-    LCD_WriteString("Temp: ");
+    LCD_WriteString("T:");
     LCD_WriteInt(temperature);
-    LCD_WriteString("C      ");
+    LCD_WriteString("C ");
+    LCD_WriteString(current_mode == MODE_AUTO ? "[AUTO]  " : "[MANUAL]");
  
     LCD_SetCursor(1, 0);
     LCD_WriteString(roof_closed ? "Roof:CLOSED " : "Roof:OPEN   ");
@@ -118,21 +137,38 @@ static void update_lcd(void) {
  * Runs every 500ms.
  */
 static void task_sensors(void) {
-    temperature = read_temperature();
-    water_val   = ADC_Read(ADC_WATER);
-    is_raining  = (water_val > WATER_THRESHOLD);
+    temperature  = read_temperature();
+    water_val    = ADC_Read(ADC_WATER);
+    is_raining   = (water_val > WATER_THRESHOLD);
+    current_mode = read_mode();
  
-    // Servo: close roof if raining
-    if (is_raining && !roof_closed) {
-        PWM_SetDutyCycle(SERVO_PORT, SERVO_PIN, SERVO_CLOSED);
-        roof_closed = 1;
-    } else if (!is_raining && roof_closed) {
-        PWM_SetDutyCycle(SERVO_PORT, SERVO_PIN, SERVO_OPEN);
-        roof_closed = 0;
+    // LDR - turn LED on when dark
+    if (ADC_Read(ADC_LDR) < LDR_THRESHOLD) {
+        GPIO_Write(LED_PORT, LED_PIN, GPIO_HIGH);
+    } else {
+        GPIO_Write(LED_PORT, LED_PIN, GPIO_LOW);
     }
  
-    // Fan: proportional to temperature
-    PWM_SetDutyCycle(FAN_PORT, FAN_PIN, calculate_fan_duty(temperature));
+    if (current_mode == MODE_AUTO) {
+        // Servo: close roof if raining
+        if (is_raining && !roof_closed) {
+            PWM_SetDutyCycle(SERVO_PORT, SERVO_PIN, SERVO_CLOSED);
+            roof_closed = 1;
+        } else if (!is_raining && roof_closed) {
+            PWM_SetDutyCycle(SERVO_PORT, SERVO_PIN, SERVO_OPEN);
+            roof_closed = 0;
+        }
+ 
+        // Fan: proportional to temperature
+        PWM_SetDutyCycle(FAN_PORT, FAN_PIN, calculate_fan_duty(temperature));
+ 
+    } else {
+        // MANUAL mode: potentiometer controls servo directly
+        uint16_t pot = ADC_Read(ADC_POT);
+        uint8_t servo_duty = SERVO_OPEN + (uint8_t)(((uint32_t)(pot - 512) * (SERVO_CLOSED - SERVO_OPEN)) / 511);
+        PWM_SetDutyCycle(SERVO_PORT, SERVO_PIN, servo_duty);
+        roof_closed = (servo_duty > (SERVO_OPEN + SERVO_CLOSED) / 2);
+    }
  
     // Buzzer active if raining or temperature too high
     buzzer_active = (temperature >= TEMP_ALARM || is_raining);
@@ -166,6 +202,9 @@ void Terrace_Init(void) {
     PWM_Init(SERVO_PORT,  SERVO_PIN,  50);
     PWM_Init(FAN_PORT,    FAN_PIN,    1000);
     PWM_Init(BUZZER_PORT, BUZZER_PIN, 2000);
+ 
+    GPIO_Init(LED_PORT, LED_PIN, GPIO_OUTPUT);
+    GPIO_Write(LED_PORT, LED_PIN, GPIO_LOW);
  
     LCD_Init();
     LCD_Clear();
