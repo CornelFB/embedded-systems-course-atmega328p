@@ -6,12 +6,12 @@ F_CPU = 16000000UL
 
 # Programmer Settings
 PROGRAMMER = arduino
-PORT = /dev/cu.usbserial-2140
-BAUD = 57600
-# BAUD = 115200
+PORT = COM4
+#BAUD = 57600
+ BAUD = 115200
 
 # Board Selection (default to nano)
-BOARD ?= nano
+BOARD ?= uno
 
 # Compiler Settings
 CC = avr-gcc
@@ -24,8 +24,7 @@ BINDIR = bin
 
 # Compiler Flags
 CFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -Wall -Wextra -std=gnu99
-CFLAGS += -I. -Idrivers/gpio -Idrivers/interrupt -Idrivers/timer -Idrivers/eeprom -Idrivers/adc -Ibsp -Iutils
-
+CFLAGS += -I. -Idrivers/gpio -Idrivers/interrupt -Idrivers/timer -Idrivers/eeprom -Idrivers/adc -Idrivers/lcd -Idrivers/pwm -Ibsp -Iutils -Isrc
 ifeq ($(BOARD), nano)
     CFLAGS += -DBOARD_NANO
 else ifeq ($(BOARD), uno)
@@ -35,7 +34,7 @@ else
 endif
 
 # Source Files
-SRC = src/main.c drivers/gpio/gpio.c drivers/interrupt/external_interrupt.c drivers/timer/timer0.c drivers/timer/timer1.c drivers/timer/timer2.c drivers/pwm/pwm.c drivers/eeprom/eeprom.c drivers/adc/adc.c utils/delay.c
+SRC = src/main.c src/terrace.c drivers/gpio/gpio.c drivers/interrupt/external_interrupt.c drivers/timer/timer0.c drivers/timer/timer1.c drivers/timer/timer2.c drivers/pwm/pwm.c drivers/eeprom/eeprom.c drivers/adc/adc.c drivers/lcd/lcd.c utils/delay.c
 
 # Object Files
 # Replace .c extension with .o and prepend OBJDIR, keeping directory structure
@@ -58,7 +57,7 @@ directories:
 	@mkdir -p $(OBJDIR)/utils
 
 $(TARGET).elf: $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 
 $(TARGET).hex: $(TARGET).elf
 	$(OBJCOPY) -O ihex -R .eeprom $< $@

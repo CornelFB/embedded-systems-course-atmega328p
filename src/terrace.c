@@ -1,3 +1,4 @@
+
 #include "terrace.h"
 #include "../drivers/lcd/lcd.h"
 #include "../drivers/adc/adc.h"
@@ -15,11 +16,11 @@
 #define FAN_PORT        GPIO_PORTB
 #define FAN_PIN         3           // D11
  
-#define BUZZER_PORT     GPIO_PORTD
-#define BUZZER_PIN      5           // D5
+#define BUZZER_PORT     GPIO_PORTB
+#define BUZZER_PIN      0           // D8
  
 #define LED_PORT        GPIO_PORTB
-#define LED_PIN         0           // D8
+#define LED_PIN         4           // D12
  
 // ADC channels
 #define ADC_NTC         0           // A0 - temperature sensor
