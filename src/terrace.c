@@ -1,5 +1,6 @@
 #include "terrace.h"
 #include "ntc.h"
+#include "fan.h"
 #include "../drivers/lcd/lcd.h"
 #include "../drivers/adc/adc.h"
 #include "../drivers/pwm/pwm.h"
@@ -11,9 +12,6 @@
 // ----------------------------------------------------------------
 #define SERVO_PORT      GPIO_PORTB
 #define SERVO_PIN       1           // D9
- 
-#define FAN_PORT        GPIO_PORTB
-#define FAN_PIN         3           // D11
  
 #define BUZZER_PORT     GPIO_PORTB
 #define BUZZER_PIN      0           // D8
@@ -30,8 +28,6 @@
 // Thresholds
 // ----------------------------------------------------------------
 #define WATER_THRESHOLD     500
-#define TEMP_FAN_START      25
-#define TEMP_FAN_MAX        40
 #define TEMP_ALARM          45
 #define LDR_THRESHOLD       400
  
@@ -57,24 +53,6 @@ static uint32_t         last_buzzer     = 0;
 // ----------------------------------------------------------------
 // Internal functions
 // ----------------------------------------------------------------
- 
-/**
- * @brief Calculates fan duty cycle based on current temperature.
- *
- * Below TEMP_FAN_START: off.
- * Between TEMP_FAN_START and TEMP_FAN_MAX: proportional 0-255.
- * Above TEMP_FAN_MAX: full speed.
- *
- * @param temp Current temperature in Celsius.
- * @return uint8_t Duty cycle (0-255).
- */
-static uint8_t calculate_fan_duty(int16_t temp) {
-    if (temp <= TEMP_FAN_START) return 0;
-    if (temp >= TEMP_FAN_MAX)   return 255;
- 
-    return (uint8_t)(((int32_t)(temp - TEMP_FAN_START) * 255) /
-                     (TEMP_FAN_MAX - TEMP_FAN_START));
-}
  
 /**
  * @brief Updates the LCD with the current system status.
@@ -121,7 +99,7 @@ static void task_sensors(void) {
             roof_closed = 0;
         }
  
-        PWM_SetDutyCycle(FAN_PORT, FAN_PIN, calculate_fan_duty(temperature));
+        Fan_Update(temperature);
  
     } else {
         uint16_t pot = ADC_Read(ADC_POT);
@@ -158,9 +136,9 @@ void Terrace_Init(void) {
     ADC_Init();
     Timer0_Init();
     NTC_Init();
+    Fan_Init();
  
     PWM_Init(SERVO_PORT,  SERVO_PIN,  50);
-    PWM_Init(FAN_PORT,    FAN_PIN,    1000);
     PWM_Init(BUZZER_PORT, BUZZER_PIN, 2000);
  
     GPIO_Init(LED_PORT, LED_PIN, GPIO_OUTPUT);
