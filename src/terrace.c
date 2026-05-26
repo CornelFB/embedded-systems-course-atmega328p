@@ -3,26 +3,16 @@
 #include "fan.h"
 #include "buzzer.h"
 #include "roof.h"
+#include "lighting.h"
 #include "../drivers/lcd/lcd.h"
 #include "../drivers/adc/adc.h"
 #include "../drivers/timer/timer0.h"
-#include "../drivers/gpio/gpio.h"
- 
-// ----------------------------------------------------------------
-// Pin definitions
-// ----------------------------------------------------------------
-#define LED_PORT        GPIO_PORTB
-#define LED_PIN         4           // D12
  
 // ADC channels
 #define ADC_POT         2           // A2 - mode potentiometer
-#define ADC_LDR         3           // A3 - light sensor
  
-// ----------------------------------------------------------------
 // Thresholds
-// ----------------------------------------------------------------
 #define TEMP_ALARM      45
-#define LDR_THRESHOLD   400
  
 // ----------------------------------------------------------------
 // Internal state
@@ -64,12 +54,7 @@ static void task_sensors(void) {
     temperature  = NTC_GetTemperature();
     current_mode = (ADC_Read(ADC_POT) < 512) ? MODE_AUTO : MODE_MANUAL;
  
-    // LDR - turn LED on when dark
-    if (ADC_Read(ADC_LDR) < LDR_THRESHOLD) {
-        GPIO_Write(LED_PORT, LED_PIN, GPIO_HIGH);
-    } else {
-        GPIO_Write(LED_PORT, LED_PIN, GPIO_LOW);
-    }
+    Lighting_Update();
  
     if (current_mode == MODE_AUTO) {
         Roof_Update();
@@ -103,9 +88,7 @@ void Terrace_Init(void) {
     Fan_Init();
     Buzzer_Init();
     Roof_Init();
- 
-    GPIO_Init(LED_PORT, LED_PIN, GPIO_OUTPUT);
-    GPIO_Write(LED_PORT, LED_PIN, GPIO_LOW);
+    Lighting_Init();
  
     LCD_Init();
     LCD_Clear();
