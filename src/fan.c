@@ -8,6 +8,8 @@
 #define TEMP_FAN_START  25
 #define TEMP_FAN_MAX    40
  
+static fan_speed_t manual_speed = FAN_OFF;
+ 
 /**
  * @brief Initializes PWM for fan control.
  */
@@ -16,7 +18,7 @@ void Fan_Init(void) {
 }
  
 /**
- * @brief Updates fan speed proportionally to temperature.
+ * @brief Updates fan speed automatically based on temperature.
  *
  * Below TEMP_FAN_START: off.
  * Between TEMP_FAN_START and TEMP_FAN_MAX: proportional 0-255.
@@ -37,4 +39,35 @@ void Fan_Update(int16_t temperature) {
     }
  
     PWM_SetDutyCycle(FAN_PORT, FAN_PIN, duty);
+}
+ 
+/**
+ * @brief Cycles fan speed in manual mode: OFF -> MEDIUM -> MAX -> OFF.
+ *
+ * Called from button interrupt in MANUAL mode.
+ */
+void Fan_NextSpeed(void) {
+    switch (manual_speed) {
+        case FAN_OFF:
+            manual_speed = FAN_MEDIUM;
+            PWM_SetDutyCycle(FAN_PORT, FAN_PIN, 128);
+            break;
+        case FAN_MEDIUM:
+            manual_speed = FAN_MAX;
+            PWM_SetDutyCycle(FAN_PORT, FAN_PIN, 255);
+            break;
+        case FAN_MAX:
+            manual_speed = FAN_OFF;
+            PWM_SetDutyCycle(FAN_PORT, FAN_PIN, 0);
+            break;
+    }
+}
+ 
+/**
+ * @brief Returns the current manual fan speed.
+ *
+ * @return fan_speed_t Current speed (FAN_OFF, FAN_MEDIUM, FAN_MAX).
+ */
+fan_speed_t Fan_GetSpeed(void) {
+    return manual_speed;
 }

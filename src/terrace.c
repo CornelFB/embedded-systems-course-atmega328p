@@ -16,8 +16,9 @@
 // Thresholds
 #define TEMP_ALARM      45
  
-// Button on D2 (INT0)
-#define BUTTON_PIN      PD2
+// Buttons
+#define MODE_BUTTON_PIN     PD2     // D2 - AUTO/MANUAL toggle
+#define FAN_BUTTON_PIN      PD3     // D3 - fan speed (manual only)
  
 // ----------------------------------------------------------------
 // Internal state
@@ -34,11 +35,11 @@ static uint32_t         last_buzzer     = 0;
 // ----------------------------------------------------------------
  
 /**
- * @brief Button interrupt callback - toggles between AUTO and MANUAL.
+ * @brief Mode button callback - toggles between AUTO and MANUAL.
  *
  * Debounced to ignore presses faster than 200ms.
  */
-static void button_callback(void) {
+static void mode_button_callback(void) {
     static uint32_t last_press = 0;
     uint32_t now = Millis();
  
@@ -46,6 +47,23 @@ static void button_callback(void) {
     last_press = now;
  
     current_mode = (current_mode == MODE_AUTO) ? MODE_MANUAL : MODE_AUTO;
+}
+ 
+/**
+ * @brief Fan button callback - cycles fan speed in MANUAL mode only.
+ *
+ * Debounced to ignore presses faster than 200ms.
+ */
+static void fan_button_callback(void) {
+    static uint32_t last_press = 0;
+    uint32_t now = Millis();
+ 
+    if (now - last_press < 200) return;
+    last_press = now;
+ 
+    if (current_mode == MODE_MANUAL) {
+        Fan_NextSpeed();
+    }
 }
  
 /**
@@ -109,9 +127,13 @@ void Terrace_Init(void) {
     Roof_Init();
     Lighting_Init();
  
-    // Button on D2 with internal pull-up, triggers on falling edge
-    PORTD |= (1 << BUTTON_PIN);
-    ExtInt_Init(INT_0, EXT_INT_FALLING_EDGE, button_callback);
+    // Mode button on D2 with internal pull-up, triggers on falling edge
+    PORTD |= (1 << MODE_BUTTON_PIN);
+    ExtInt_Init(INT_0, EXT_INT_FALLING_EDGE, mode_button_callback);
+ 
+    // Fan button on D3 with internal pull-up, triggers on falling edge
+    PORTD |= (1 << FAN_BUTTON_PIN);
+    ExtInt_Init(INT_1, EXT_INT_FALLING_EDGE, fan_button_callback);
  
     LCD_Init();
     LCD_Clear();
