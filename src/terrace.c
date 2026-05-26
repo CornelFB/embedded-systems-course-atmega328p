@@ -1,6 +1,7 @@
 #include "terrace.h"
 #include "ntc.h"
 #include "fan.h"
+#include "buzzer.h"
 #include "../drivers/lcd/lcd.h"
 #include "../drivers/adc/adc.h"
 #include "../drivers/pwm/pwm.h"
@@ -12,9 +13,6 @@
 // ----------------------------------------------------------------
 #define SERVO_PORT      GPIO_PORTB
 #define SERVO_PIN       1           // D9
- 
-#define BUZZER_PORT     GPIO_PORTB
-#define BUZZER_PIN      0           // D8
  
 #define LED_PORT        GPIO_PORTB
 #define LED_PIN         4           // D12
@@ -43,8 +41,6 @@ static int16_t          temperature     = 0;
 static uint16_t         water_val       = 0;
 static uint8_t          is_raining      = 0;
 static uint8_t          roof_closed     = 0;
-static uint8_t          buzzer_active   = 0;
-static uint8_t          buzzer_toggle   = 0;
  
 static uint32_t         last_sensors    = 0;
 static uint32_t         last_lcd        = 0;
@@ -107,22 +103,16 @@ static void task_sensors(void) {
         PWM_SetDutyCycle(SERVO_PORT, SERVO_PIN, servo_duty);
         roof_closed = (servo_duty > (SERVO_OPEN + SERVO_CLOSED) / 2);
     }
- 
-    buzzer_active = (temperature >= TEMP_ALARM || is_raining);
 }
  
 /**
- * @brief Buzzer task - generates an intermittent beep when active.
+ * @brief Updates buzzer state.
  *
  * Runs every 100ms.
  */
 static void task_buzzer(void) {
-    if (buzzer_active) {
-        buzzer_toggle = !buzzer_toggle;
-        PWM_SetDutyCycle(BUZZER_PORT, BUZZER_PIN, buzzer_toggle ? 128 : 0);
-    } else {
-        PWM_SetDutyCycle(BUZZER_PORT, BUZZER_PIN, 0);
-    }
+    uint8_t alarm = (temperature >= TEMP_ALARM || is_raining);
+    Buzzer_Update(alarm);
 }
  
 // ----------------------------------------------------------------
@@ -137,9 +127,9 @@ void Terrace_Init(void) {
     Timer0_Init();
     NTC_Init();
     Fan_Init();
+    Buzzer_Init();
  
-    PWM_Init(SERVO_PORT,  SERVO_PIN,  50);
-    PWM_Init(BUZZER_PORT, BUZZER_PIN, 2000);
+    PWM_Init(SERVO_PORT, SERVO_PIN, 50);
  
     GPIO_Init(LED_PORT, LED_PIN, GPIO_OUTPUT);
     GPIO_Write(LED_PORT, LED_PIN, GPIO_LOW);
