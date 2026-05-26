@@ -7,12 +7,17 @@
 #include "../drivers/lcd/lcd.h"
 #include "../drivers/adc/adc.h"
 #include "../drivers/timer/timer0.h"
+#include "../drivers/interrupt/external_interrupt.h"
+#include "../drivers/gpio/gpio.h"
  
 // ADC channels
-#define ADC_POT         2           // A2 - mode potentiometer
+#define ADC_POT         2           // A2 - mode potentiometer (manual only)
  
 // Thresholds
 #define TEMP_ALARM      45
+ 
+// Button on D2 (INT0)
+#define BUTTON_PIN      PD2
  
 // ----------------------------------------------------------------
 // Internal state
@@ -27,6 +32,21 @@ static uint32_t         last_buzzer     = 0;
 // ----------------------------------------------------------------
 // Internal functions
 // ----------------------------------------------------------------
+ 
+/**
+ * @brief Button interrupt callback - toggles between AUTO and MANUAL.
+ *
+ * Debounced to ignore presses faster than 200ms.
+ */
+static void button_callback(void) {
+    static uint32_t last_press = 0;
+    uint32_t now = Millis();
+ 
+    if (now - last_press < 200) return;
+    last_press = now;
+ 
+    current_mode = (current_mode == MODE_AUTO) ? MODE_MANUAL : MODE_AUTO;
+}
  
 /**
  * @brief Updates the LCD with the current system status.
@@ -51,8 +71,7 @@ static void update_lcd(void) {
  * Runs every 500ms.
  */
 static void task_sensors(void) {
-    temperature  = NTC_GetTemperature();
-    current_mode = (ADC_Read(ADC_POT) < 512) ? MODE_AUTO : MODE_MANUAL;
+    temperature = NTC_GetTemperature();
  
     Lighting_Update();
  
@@ -89,6 +108,10 @@ void Terrace_Init(void) {
     Buzzer_Init();
     Roof_Init();
     Lighting_Init();
+ 
+    // Button on D2 with internal pull-up, triggers on falling edge
+    PORTD |= (1 << BUTTON_PIN);
+    ExtInt_Init(INT_0, EXT_INT_FALLING_EDGE, button_callback);
  
     LCD_Init();
     LCD_Clear();
