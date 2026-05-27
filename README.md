@@ -8,6 +8,10 @@ Found a bug or you just want to contribute to this project ? Please raise an iss
 
 [![Run Tests](https://github.com/mamuleanu/embedded-systems-course-atmega328p/actions/workflows/tests.yml/badge.svg)](https://github.com/mamuleanu/embedded-systems-course-atmega328p/actions/workflows/tests.yml)
 
+## About This Fork
+This fork contains the implementation of the Smart Restaurant Terrace project — an automated terrace management system for a restaurant, built on Arduino Uno without any Arduino libraries.
+
+The system monitors temperature and rain conditions to automatically control a roof cover (servo motor) and a cooling fan. It also features automatic lighting based on ambient light, buzzer alerts, and a manual override mode for direct control.
 
 ## Features
 
@@ -19,6 +23,7 @@ Found a bug or you just want to contribute to this project ? Please raise an iss
     - **EEPROM**: Read, Write, Update (lifespan-aware).
     - **ADC**: Blocking 10-bit Analog-to-Digital conversion.
     - **PWM**: High-level wrapper for Timer1 (16-bit) and Timer2 (8-bit) PWM generation.
+    - **LCD**: HD44780 16x2 LCD driver over I2C (PCF8574 module).
 - **Board Support Package (BSP)**: Pin mappings for **Arduino Nano** and **Uno**.
 - **Robust Build System**: `Makefile` for compilation, flashing, and testing.
 - **Host-Based Unit Testing**: Run unit tests on your computer without hardware using register mocking.
@@ -32,10 +37,37 @@ Found a bug or you just want to contribute to this project ? Please raise an iss
 - [x] Interrupt driver
 - [x] Timer driver
 - [x] PWM driver
-- [ ] I2C driver
+- [X] LCD driver (I2C)
 - [ ] SPI driver
 - [ ] UART driver
 - [ ] Unit tests
+
+## Project: Smart Restaurant Terrace
+
+What it does
+
+-Temperature monitoring via NTC thermistor — fan starts automatically when too hot
+-Rain detection via water sensor — servo motor closes the roof automatically
+-Automatic lighting via LDR — LED turns on when dark
+-Buzzer alerts for rain and high temperature events
+-AUTO / MANUAL mode switchable via a button (INT0)
+-Manual fan speed control via a second button (INT1) — cycles OFF → MEDIUM → MAX
+-Manual roof control via potentiometer in MANUAL mode
+-LCD 16x2 (I2C) displays temperature, mode and roof status in real time
+## Hardware
+Component                 Pin
+NTC Thermistor            A0
+Water Sensor              A1
+Potentiometer             A2
+LDR                       A3
+LCD SDA                   A4
+LCD SCL                   A5
+Mode Button (AUTO/MANUAL) D2
+Fan Speed Button (MANUAL) D3
+Buzzer                    D8
+Servo Motor               D9
+Fan DC 5V                 D11
+LED                       D12
 
 ## Project Structure
 
@@ -46,8 +78,16 @@ Found a bug or you just want to contribute to this project ? Please raise an iss
 │   ├── eeprom/
 │   ├── gpio/
 │   ├── interrupt/
+│   ├── lcd/
 │   └── timer/
-├── src/            # Application source code (main.c)
+├── src/            # Application source code
+│   ├── main.c
+│   ├── terrace.c/.h    # Main scheduler and mode logic
+│   ├── ntc.c/.h        # Temperature reading
+│   ├── fan.c/.h        # Fan speed control
+│   ├── buzzer.c/.h     # Buzzer alerts
+│   ├── roof.c/.h       # Servo + water sensor
+│   └── lighting.c/.h   # LDR + LED
 ├── test/           # Unit tests & Mocks
 │   ├── mocks/      # Mock AVR registers for host testing
 │   ├── framework/  # Minimal test runner
@@ -66,7 +106,7 @@ Found a bug or you just want to contribute to this project ? Please raise an iss
 ### Commands
 | Command | Description |
 |---------|-------------|
-| `make all BOARD=nano` | Compile the project for Arduino Nano. |
+| `make all BOARD=uno` | Compile the project for Arduino Nano. |
 | `make flash` | Flash the firmware to the connected board. |
 | `make clean` | Remove build artifacts. |
 
