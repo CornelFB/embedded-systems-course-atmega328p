@@ -1,3 +1,4 @@
+
 #include "terrace.h"
 #include "ntc.h"
 #include "fan.h"
@@ -14,7 +15,7 @@
 #define ADC_POT         2           // A2 - mode potentiometer (manual only)
  
 // Thresholds
-#define TEMP_ALARM      45
+#define TEMP_ALARM      30
  
 // Buttons
 #define MODE_BUTTON_PIN     PD2     // D2 - AUTO/MANUAL toggle
@@ -121,6 +122,14 @@ static void task_buzzer(void) {
 void Terrace_Init(void) {
     ADC_Init();
     Timer0_Init();
+ 
+    LCD_Init();
+    LCD_Clear();
+    LCD_SetCursor(0, 0);
+    LCD_WriteString("Smart Restaurant");
+    LCD_SetCursor(1, 0);
+    LCD_WriteString("    Terrace     ");
+ 
     NTC_Init();
     Fan_Init();
     Buzzer_Init();
@@ -134,13 +143,6 @@ void Terrace_Init(void) {
     // Fan button on D3 with internal pull-up, triggers on falling edge
     PORTD |= (1 << FAN_BUTTON_PIN);
     ExtInt_Init(INT_1, EXT_INT_FALLING_EDGE, fan_button_callback);
- 
-    LCD_Init();
-    LCD_Clear();
-    LCD_SetCursor(0, 0);
-    LCD_WriteString("Smart Restaurant");
-    LCD_SetCursor(1, 0);
-    LCD_WriteString("    Terrace     ");
 }
  
 /**
@@ -164,3 +166,4 @@ void Terrace_Run(void) {
         task_buzzer();
     }
 }
+ 

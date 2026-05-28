@@ -34,8 +34,7 @@ else
 endif
 
 # Source Files
-SRC = src/main.c src/terrace.c drivers/gpio/gpio.c drivers/interrupt/external_interrupt.c drivers/timer/timer0.c drivers/timer/timer1.c drivers/timer/timer2.c drivers/pwm/pwm.c drivers/eeprom/eeprom.c drivers/adc/adc.c drivers/lcd/lcd.c utils/delay.c
-
+SRC = src/main.c src/terrace.c src/ntc.c src/fan.c src/buzzer.c src/roof.c src/lighting.c drivers/gpio/gpio.c drivers/interrupt/external_interrupt.c drivers/timer/timer0.c drivers/timer/timer1.c drivers/timer/timer2.c drivers/pwm/pwm.c drivers/eeprom/eeprom.c drivers/adc/adc.c drivers/lcd/lcd.c utils/delay.c
 # Object Files
 # Replace .c extension with .o and prepend OBJDIR, keeping directory structure
 OBJ = $(patsubst %.c,$(OBJDIR)/%.o,$(SRC))
